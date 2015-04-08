@@ -1,6 +1,6 @@
 <?php
 /**
- * Slack strategy for Opauth
+ * Ultrareg strategy for Opauth
  *
  * Based on work by U-Zyn Chua (http://uzyn.com)
  *
@@ -42,11 +42,13 @@ class UltraregStrategy extends OpauthStrategy {
 	 * Auth request
 	 */
 	public function request() {
-		$url = 'https://Ultrareg.com/oauth/authorize';
+		$url = 'https://ultrareg.knowit.no/oauth/authorize';
 		$params = array(
+			'response_type' => 'code',
 			'client_id' => $this->strategy['client_id'],
 			'redirect_uri' => $this->strategy['redirect_uri']
 		);
+
 
 		foreach ($this->optionals as $key) {
 			if (!empty($this->strategy[$key])) $params[$key] = $this->strategy[$key];
@@ -59,12 +61,14 @@ class UltraregStrategy extends OpauthStrategy {
 	 * Internal callback, after OAuth
 	 */
 	public function oauth2callback() {
+
 		if (array_key_exists('code', $_GET) && !empty($_GET['code'])) {
 			$code = $_GET['code'];
-			$url = 'https://Ultrareg.com/api/oauth.access';
+			$url = 'https://ultrareg.knowit.no/oauth/token';
 
 			$params = array(
 				'code' => $code,
+				'grant_type' => 'authorization_code',
 				'client_id' => $this->strategy['client_id'],
 				'client_secret' => $this->strategy['client_secret'],
 				'redirect_uri' => $this->strategy['redirect_uri'],
@@ -73,28 +77,47 @@ class UltraregStrategy extends OpauthStrategy {
 			if (!empty($this->strategy['state'])) $params['state'] = $this->strategy['state'];
 
 			$response = $this->serverPost($url, $params, null, $headers);
+
 			$results = json_decode($response,true);
 
 			if (!empty($results) && !empty($results['access_token'])) {
 
 				$user = $this->user($results['access_token']);
 
-
 				$this->auth = array(
-					'uid' => $user['basics']['user_id'],
+					'uid' => $user['Name'],
 					'info' => array(),
-					'credentials' => array(
-						'token' => $results['access_token']
-					),
+					'credentials' => $results,
 					'raw' => $user
 				);
 
-				$this->mapProfile($user, 'user.real_name', 'info.name');
-				$this->mapProfile($user, 'user.name', 'info.nickname');
-				$this->mapProfile($user, 'user.profile.first_name', 'info.first_name');
-				$this->mapProfile($user, 'user.profile.last_name', 'info.last_name');
-				$this->mapProfile($user, 'user.profile.email', 'info.email');
-				$this->mapProfile($user, 'user.profile.image_48', 'info.image');
+				// Scope set = retrieve API key instead of tokens
+				if (in_array('scope', $this->optionals) && isset($results['api_key'])) {
+						$this->auth['credentials'] = ['token' => $results['api_key']];
+				}
+
+				// Extract Claims
+				foreach ($user['Claims'] as $claim) {
+					switch ($claim['Type']) {
+						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname':
+							$this->auth['info']['first_name'] = $claim['Value'];
+							break;
+						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname':
+							$this->auth['info']['last_name'] = $claim['Value'];
+							break;
+						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress':
+							$this->auth['info']['email'] = $claim['Value'];
+							break;
+						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name':
+							$this->auth['info']['nickname'] = $claim['Value'];
+							break;
+						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobilephone':
+							$this->auth['info']['phone'] = $claim['Value'];
+							break;
+					}
+				}
+
+				$this->auth['info']['name'] = $this->auth['info']['first_name'].' '.$this->auth['info']['last_name'];
 
 				$this->callback();
 			}
@@ -128,20 +151,14 @@ class UltraregStrategy extends OpauthStrategy {
 	 * @return array Parsed JSON results
 	 */
 	private function user($access_token) {
-		$user = $this->serverGet('https://Ultrareg.com/api/auth.test', array('token' => $access_token), null, $headers);
+
+		$options['http']['header'] = 'Authorization: Bearer '.$access_token;
+
+		$user = $this->serverGet('https://ultrareg.knowit.no/api/identity', [], $options);
 
 		if (!empty($user)) {
-			$basics = $this->recursiveGetObjectVars(json_decode($user));
-
-			// Get detailed info:
-			$getDetails = $this->serverGet('https://Ultrareg.com/api/users.info', array('token' => $access_token, 'user' => $basics['user_id']), null, $headers);
-			$details = $this->recursiveGetObjectVars(json_decode($getDetails));
-
-			$details['basics'] = $basics;
-
-			return $details;
-		}
-		else {
+			return $this->recursiveGetObjectVars(json_decode($user));
+		} else {
 			$error = array(
 				'code' => 'userinfo_error',
 				'message' => 'Failed when attempting to query Ultrareg API for user information',

@@ -2,7 +2,7 @@ Opauth-Ultrareg
 =============
 [Opauth][1] strategy for Ultrareg authentication.
 
-Implemented based on https://ultrareg.knowit.no
+Implemented based on https://ultrareg.knowit.no & https://ultrareg.knowit.no/help/authentication
 
 Getting started
 ----------------
@@ -26,7 +26,7 @@ Getting started
    Then run `composer install`.
 
 
-2. Create Ultrareg application at https://api.ultrareg.com/applications
+2. Create Ultrareg application at https://ultrareg.knowit.no/account
 
 3. Configure Opauth-Ultrareg strategy with at least `Client ID` and `Client Secret`.
 
