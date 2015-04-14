@@ -1,11 +1,13 @@
 Opauth-Ultrareg
 =============
-[Opauth][1] strategy for Ultrareg authentication.
+[Opauth][1] strategy for Ultrareg authentication. 
 
 Implemented based on https://ultrareg.knowit.no & https://ultrareg.knowit.no/help/authentication
 
 Getting started
 ----------------
+0. Make sure cURL is enabled (required due to header size issues using Opauth's transport method)
+
 1. Install Opauth-Ultrareg:
 
    Using git:
