@@ -76,7 +76,7 @@ class UltraregStrategy extends OpauthStrategy {
 
 			if (!empty($this->strategy['state'])) $params['state'] = $this->strategy['state'];
 
-			$response = $this->serverPost($url, $params, null, $headers);
+			$response = $this->serverPost($url, $params, null);
 
 			$results = json_decode($response,true);
 
@@ -91,9 +91,14 @@ class UltraregStrategy extends OpauthStrategy {
 					'raw' => $user
 				);
 
-				// Scope set = retrieve API key instead of tokens
+				// Scope set = retrieve credentials via API key:
 				if (in_array('scope', $this->optionals) && isset($results['api_key'])) {
-						$this->auth['credentials'] = ['token' => $results['api_key']];
+					$this->auth['credentials'] = $this->getCredentials($url, $results['api_key']);
+				}
+
+				// OpAuth expects 'token' as key:
+				if (isset($this->auth['credentials']['access_token'])) {
+					$this->auth['credentials']['token'] = $this->auth['credentials']['access_token'];
 				}
 
 				// Extract Claims
@@ -117,7 +122,11 @@ class UltraregStrategy extends OpauthStrategy {
 					}
 				}
 
-				$this->auth['info']['name'] = $this->auth['info']['first_name'].' '.$this->auth['info']['last_name'];
+				if (isset($this->auth['info']['first_name']) && isset($this->auth['info']['last_name'])) {
+					$this->auth['info']['name'] = $this->auth['info']['first_name'].' '.$this->auth['info']['last_name'];
+				} else {
+					$this->auth['info']['name'] = 'Unknown';
+				}
 
 				$this->callback();
 			}
@@ -126,8 +135,7 @@ class UltraregStrategy extends OpauthStrategy {
 					'code' => 'access_token_error',
 					'message' => 'Failed when attempting to obtain access token',
 					'raw' => array(
-						'response' => $response,
-						'headers' => $headers
+						'response' => $response
 					)
 				);
 
@@ -164,11 +172,47 @@ class UltraregStrategy extends OpauthStrategy {
 				'message' => 'Failed when attempting to query Ultrareg API for user information',
 				'raw' => array(
 					'response' => $user,
-					'headers' => $headers
 				)
 			);
 
 			$this->errorCallback($error);
 		}
+	}
+
+	/**
+	 * Query Ultrareg API for access token based on API key
+	 * @param  string $access_token
+	 * @return array  Parsed JSON results
+	 */
+	private function getCredentials($url, $access_token) {
+
+		$cred = base64_encode($this->strategy['client_id'].':'.$this->strategy['client_secret']);
+
+		$data = array(
+			'grant_type' => 'http://ultrareg.knowit.no/identity/granttype/api_key',
+			'api_key' => $access_token);
+
+		$options['http'] = array(
+			'header' => "Authorization: Basic ".$cred."\r\nContent-type: application/x-www-form-urlencoded",
+			'method' => 'POST',
+			'content' => http_build_query($data, '', '&')
+			);
+
+		$credentials = $this->httpRequest($url, $options);
+
+		if (!empty($credentials)) {
+			return $this->recursiveGetObjectVars(json_decode($credentials));
+		} else {
+			$error = array(
+				'code' => 'credentials_error',
+				'message' => 'Count not retrieve access token based on API key',
+				'raw' => array(
+					'response' => $credentials,
+				)
+			);
+
+			$this->errorCallback($error);
+		}
+
 	}
 }
