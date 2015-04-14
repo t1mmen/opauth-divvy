@@ -82,7 +82,7 @@ class UltraregStrategy extends OpauthStrategy {
 
 			if (!empty($results) && !empty($results['access_token'])) {
 
-				$user = $this->user($results['access_token']);
+				$user = $this->userCURL($results['access_token']);
 
 				$this->auth = array(
 					'uid' => $user['Name'],
@@ -170,6 +170,42 @@ class UltraregStrategy extends OpauthStrategy {
 			$error = array(
 				'code' => 'userinfo_error',
 				'message' => 'Failed when attempting to query Ultrareg API for user information',
+				'raw' => array(
+					'response' => $user,
+				)
+			);
+
+			$this->errorCallback($error);
+		}
+	}
+
+	/**
+	 * Queries Ultrareg API via cURL
+	 *
+	 * We're most likely hitting some sort of header limitation with the token > 800 chars.
+	 * So, falling back to cURL for now:
+	 *
+	 * @param string $access_token
+	 * @return array Parsed JSON results
+	 */
+	private function userCURL($access_token) {
+
+		$ch_subs = curl_init();
+		curl_setopt($ch_subs, CURLOPT_URL, 'https://ultrareg.knowit.no/api/identity');
+		$headers = array('Authorization: Bearer ' . $access_token);
+		curl_setopt($ch_subs, CURLOPT_HTTPHEADER, $headers);
+
+		curl_setopt($ch_subs, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch_subs, CURLOPT_SSL_VERIFYPEER, false);
+		$subs_return = curl_exec($ch_subs);
+		curl_close($ch_subs);
+
+		if (!empty($subs_return)) {
+			return $this->recursiveGetObjectVars(json_decode($subs_return));
+		} else {
+			$error = array(
+				'code' => 'userinfo_error',
+				'message' => 'Failed when attempting to query Ultrareg API for user information via cURL',
 				'raw' => array(
 					'response' => $user,
 				)
