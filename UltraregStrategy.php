@@ -153,33 +153,6 @@ class UltraregStrategy extends OpauthStrategy {
 	}
 
 	/**
-	 * Queries Ultrareg API for user info
-	 *
-	 * @param string $access_token
-	 * @return array Parsed JSON results
-	 */
-	private function user($access_token) {
-
-		$options['http']['header'] = 'Authorization: Bearer '.$access_token;
-
-		$user = $this->serverGet('https://ultrareg.knowit.no/api/identity', [], $options);
-
-		if (!empty($user)) {
-			return $this->recursiveGetObjectVars(json_decode($user));
-		} else {
-			$error = array(
-				'code' => 'userinfo_error',
-				'message' => 'Failed when attempting to query Ultrareg API for user information',
-				'raw' => array(
-					'response' => $user,
-				)
-			);
-
-			$this->errorCallback($error);
-		}
-	}
-
-	/**
 	 * Queries Ultrareg API via cURL
 	 *
 	 * We're most likely hitting some sort of header limitation with the token > 800 chars.
