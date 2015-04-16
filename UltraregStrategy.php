@@ -199,6 +199,7 @@ class UltraregStrategy extends OpauthStrategy {
 
 		$data = array(
 			'grant_type' => 'http://ultrareg.knowit.no/identity/granttype/api_key',
+			'redirect_uri' => $this->strategy['redirect_uri'],
 			'api_key' => $access_token);
 
 		$options['http'] = array(
