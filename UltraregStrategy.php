@@ -189,17 +189,18 @@ class UltraregStrategy extends OpauthStrategy {
 	}
 
 	/**
-	 * Query Ultrareg API for access token based on API key
-	 * @param  string $access_token
+	 * Query Ultrareg API for access token based on user API key
+	 * @param  string $api_key
 	 * @return array  Parsed JSON results
 	 */
-	private function getCredentials($url, $access_token) {
+	private function getCredentials($url, $api_key) {
 
 		$cred = base64_encode($this->strategy['client_id'].':'.$this->strategy['client_secret']);
 
 		$data = array(
 			'grant_type' => 'http://ultrareg.knowit.no/identity/granttype/api_key',
-			'api_key' => $access_token);
+			'redirect_uri' => $this->strategy['redirect_uri']
+			'api_key' => $api_key);
 
 		$options['http'] = array(
 			'header' => "Authorization: Basic ".$cred."\r\nContent-type: application/x-www-form-urlencoded",
