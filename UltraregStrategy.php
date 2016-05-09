@@ -42,7 +42,9 @@ class UltraregStrategy extends OpauthStrategy {
 	 * Auth request
 	 */
 	public function request() {
-		$url = 'https://ultrareg.knowit.no/oauth/authorize';
+		$urlBase = (isset($this->strategy['baseUrl'])) ? $this->strategy['baseUrl'] : 'https://www.divvy.no';
+		$url = $urlBase.'/oauth/authorize';
+
 		$params = array(
 			'response_type' => 'code',
 			'client_id' => $this->strategy['client_id'],
@@ -64,7 +66,8 @@ class UltraregStrategy extends OpauthStrategy {
 
 		if (array_key_exists('code', $_GET) && !empty($_GET['code'])) {
 			$code = $_GET['code'];
-			$url = 'https://ultrareg.knowit.no/oauth/token';
+			$urlBase = (isset($this->strategy['baseUrl'])) ? $this->strategy['baseUrl'] : 'https://www.divvy.no';
+			$url = $urlBase.'/oauth/token';
 
 			$params = array(
 				'code' => $code,
@@ -85,7 +88,7 @@ class UltraregStrategy extends OpauthStrategy {
 				$user = $this->userCURL($results['access_token']);
 
 				$this->auth = array(
-					'uid' => $user['Name'],
+					'uid' => $user['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'],
 					'info' => array(),
 					'credentials' => $results,
 					'raw' => $user
@@ -97,27 +100,27 @@ class UltraregStrategy extends OpauthStrategy {
 				}
 
 				// OpAuth expects 'token' as key:
-				if (isset($this->auth['credentials']['access_token'])) {
-					$this->auth['credentials']['token'] = $this->auth['credentials']['access_token'];
+				if (isset($results['access_token'])) {
+					$this->auth['credentials']['token'] = $results['access_token'];
 				}
 
 				// Extract Claims
-				foreach ($user['Claims'] as $claim) {
-					switch ($claim['Type']) {
+				foreach ($user as $key => $claim) {
+					switch ($key) {
 						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname':
-							$this->auth['info']['first_name'] = $claim['Value'];
+							$this->auth['info']['first_name'] = $claim;
 							break;
 						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname':
-							$this->auth['info']['last_name'] = $claim['Value'];
+							$this->auth['info']['last_name'] = $claim;
 							break;
 						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress':
-							$this->auth['info']['email'] = $claim['Value'];
+							$this->auth['info']['email'] = $claim;
 							break;
-						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name':
-							$this->auth['info']['nickname'] = $claim['Value'];
+						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier':
+							$this->auth['info']['nickname'] = $claim;
 							break;
 						case 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobilephone':
-							$this->auth['info']['phone'] = $claim['Value'];
+							$this->auth['info']['phone'] = $claim;
 							break;
 					}
 				}
@@ -163,8 +166,11 @@ class UltraregStrategy extends OpauthStrategy {
 	 */
 	private function userCURL($access_token) {
 
+		$urlBase = (isset($this->strategy['baseUrl'])) ? $this->strategy['baseUrl'] : 'https://www.divvy.no';
+		$url = $urlBase.'/openid/userinfo';
+
 		$ch_subs = curl_init();
-		curl_setopt($ch_subs, CURLOPT_URL, 'https://ultrareg.knowit.no/api/identity');
+		curl_setopt($ch_subs, CURLOPT_URL, $url);
 		$headers = array('Authorization: Bearer ' . $access_token);
 		curl_setopt($ch_subs, CURLOPT_HTTPHEADER, $headers);
 
@@ -178,7 +184,7 @@ class UltraregStrategy extends OpauthStrategy {
 		} else {
 			$error = array(
 				'code' => 'userinfo_error',
-				'message' => 'Failed when attempting to query Ultrareg API for user information via cURL',
+				'message' => 'Failed when attempting to query Diivy API for user information via cURL',
 				'raw' => array(
 					'response' => $user,
 				)
