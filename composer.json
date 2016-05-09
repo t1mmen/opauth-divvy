@@ -1,7 +1,7 @@
 {
-    "name": "t1mmen/opauth-ultrareg",
-    "description": "Opauth strategy for Ultrareg",
-    "keywords": ["authentication","auth","ultrareg", "opauth", "oauth"],
+    "name": "t1mmen/opauth-divvy",
+    "description": "Opauth strategy for Divvy",
+    "keywords": ["authentication","auth","divvy", "opauth", "oauth"],
     "homepage": "https://github.com/t1mmen/opauth-slack",
     "license": "MIT",
     "authors": [
