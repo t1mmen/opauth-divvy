@@ -1,3 +1,4 @@
+<?php
 /**
  * Divvy strategy for Opauth
  *
